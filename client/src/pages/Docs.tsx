@@ -1,84 +1,59 @@
 /**
  * Docs Page
  * Design: Documentation with cultural pattern background
- * Displays skill documentation from markdown files
+ * Dynamically loads skill documentation from /public/skills/ directory
  */
 
+import { useState, useEffect } from 'react';
 import { Link } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, BookOpen } from 'lucide-react';
+import { ArrowLeft, BookOpen, Loader2 } from 'lucide-react';
 import { Streamdown } from 'streamdown';
 
-const skills = [
-  {
-    id: 'skill',
-    title: 'Myanmar AI Skill',
-    description: 'Myanmar AI Assistant ၏ အခြင်းအခြင်းသော လုပ်ဆောင်ချက်များ',
-    content: `# Myanmar AI Skill
+interface Skill {
+  id: string;
+  title: string;
+  description: string;
+  content: string;
+}
 
-Myanmar AI Assistant သည် အောက်ပါ အဓိက လုပ်ဆောင်ချက်များကို ပေးဆောင်ပါသည်။
-
-## အဓိက လုပ်ဆောင်ချက်များ
-
-### 1. Real-time Chat
-- Groq API ကို အသုံးပြု၍ အမြန်တုံ့ပြန်မှု
-- စကားလုံးချင်းဆီ တစ်ခြင်းတစ်ခြင်း ပြန်ပေးမှု
-- မြန်မာ ဘာသာစကားကို အဆင့်မြင့်စွာ နားလည်ပြီး ဖြေကြားပေးမှု
-
-### 2. Streaming Response
-- API streaming ကို အသုံးပြု၍ အမြန်တုံ့ပြန်မှု
-- Real-time status updates
-- Smooth animations
-
-### 3. PWA Support
-- မိုဘိုင်းလ်တွင် အပ်ပလီကေးရှင်းအဖြစ် ထည့်သွင်းအသုံးပြုနိုင်သည်
-- Offline support
-- Push notifications`,
-  },
-  {
-    id: 'explain',
-    title: 'Explain Mode',
-    description: 'အသေးစိတ် ရှင်းလင်းချက်များ ပေးဆောင်သည့် မုဒ်',
-    content: `# Explain Mode
-
-Explain mode သည် အသေးစိတ် ရှင်းလင်းချက်များ ပေးဆောင်သည့် လုပ်ဆောင်ချက်ဖြစ်ပါသည်။
-
-## အသုံးပြုနည်း
-
-1. သင်၏မေးခွန်းကို ရေးပါ
-2. Explain mode ကို ရွေးချယ်ပါ
-3. အသေးစိတ် ရှင်းလင်းချက်များ ရယူပါ
-
-## အကျိုးအbenefit များ
-
-- အသေးစိတ် ရှင်းလင်းချက်များ
-- ဥပမာများ ပါဝင်သည်
-- အလွယ်တကူ နားလည်နိုင်သည်`,
-  },
-  {
-    id: 'websearch',
-    title: 'Web Search',
-    description: 'အင်တာနက်မှ သတင်းအချက်အလက် ရှာဖွေသည့် လုပ်ဆောင်ချက်',
-    content: `# Web Search
-
-Web search လုပ်ဆောင်ချက်သည် အင်တာနက်မှ အချက်အလက်များ ရှာဖွေပေးပါသည်။
-
-## အသုံးပြုနည်း
-
-1. သင်၏ရှာဖွေမည့် အကြောင်းအရာကို ရေးပါ
-2. Web search ကို ရွေးချယ်ပါ
-3. အင်တာနက်မှ အချက်အလက်များ ရယူပါ
-
-## အကျိုးအbenefit များ
-
-- အသစ်ဆုံး သတင်းအချက်အလက်များ
-- အင်တာနက်မှ အချက်အလက်များ
-- အ신뢰할်ရသည့် အရင်းအမြစ်များ`,
-  },
-];
+const skillsFiles = ['Skill.md', 'Explain.md', 'Web-search.md', 'Agent.md', 'CLI-Skill.md'];
 
 export default function Docs() {
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadSkills() {
+      try {
+        const loaded: Skill[] = [];
+        for (const file of skillsFiles) {
+          const response = await fetch(`/skills/${file}`);
+          if (response.ok) {
+            const content = await response.text();
+            // Extract title from first heading
+            const titleMatch = content.match(/^#\s+(.+)$/m);
+            const title = titleMatch ? titleMatch[1].trim() : file.replace('.md', '');
+            
+            loaded.push({
+              id: file.replace('.md', '').toLowerCase().replace('-', ''),
+              title,
+              description: file.replace('.md', ''),
+              content,
+            });
+          }
+        }
+        setSkills(loaded);
+      } catch (error) {
+        console.error('Failed to load skills:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadSkills();
+  }, []);
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -131,21 +106,34 @@ export default function Docs() {
 
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-12">
-            {skills.map((skill) => (
-              <Card
-                key={skill.id}
-                id={skill.id}
-                className="p-8 border-border/40 scroll-mt-24"
-              >
-                <h2 className="text-3xl font-bold text-foreground mb-2">
-                  {skill.title}
-                </h2>
-                <p className="text-muted-foreground mb-6">{skill.description}</p>
-                <div className="prose prose-sm max-w-none">
-                  <Streamdown>{skill.content}</Streamdown>
+            {loading ? (
+              <Card className="p-8 border-border/40">
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                  <span className="ml-3 text-muted-foreground">Loading skills...</span>
                 </div>
               </Card>
-            ))}
+            ) : skills.length === 0 ? (
+              <Card className="p-8 border-border/40">
+                <p className="text-muted-foreground">No skills found.</p>
+              </Card>
+            ) : (
+              skills.map((skill) => (
+                <Card
+                  key={skill.id}
+                  id={skill.id}
+                  className="p-8 border-border/40 scroll-mt-24"
+                >
+                  <h2 className="text-3xl font-bold text-foreground mb-2">
+                    {skill.title}
+                  </h2>
+                  <p className="text-muted-foreground mb-6">{skill.description}</p>
+                  <div className="prose prose-sm max-w-none">
+                    <Streamdown>{skill.content}</Streamdown>
+                  </div>
+                </Card>
+              ))
+            )}
           </div>
         </div>
       </div>
