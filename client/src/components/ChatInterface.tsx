@@ -4,7 +4,7 @@
  * Design: Floating chat bubbles with smooth animations
  */
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
@@ -24,6 +24,12 @@ export function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesRef = useRef<Message[]>([]);
+
+  // Keep ref in sync with state for use in fetch body
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -33,8 +39,8 @@ export function ChatInterface() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim()) return;
+  const handleSendMessage = useCallback(async () => {
+    if (!input.trim() || isLoading) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -42,10 +48,15 @@ export function ChatInterface() {
       content: input,
     };
 
+    // Use ref for the fetch body to avoid stale closure
+    const currentMessages = [...messagesRef.current, userMessage];
+
     setMessages((prev) => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     setIsStreaming(true);
+
+    const assistantId = (Date.now() + 1).toString();
 
     try {
       const response = await fetch('/api/chat', {
@@ -53,7 +64,7 @@ export function ChatInterface() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           model: 'llama-3.3-70b-versatile',
-          messages: [...messages, userMessage].map((m) => ({
+          messages: currentMessages.map((m) => ({
             role: m.role,
             content: m.content,
           })),
@@ -65,43 +76,52 @@ export function ChatInterface() {
       const reader = response.body?.getReader();
       if (!reader) throw new Error('No response body');
 
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: '',
-      };
+      // Add empty assistant message
+      setMessages((prev) => [
+        ...prev,
+        { id: assistantId, role: 'assistant', content: '' },
+      ]);
 
-      setMessages((prev) => [...prev, assistantMessage]);
-
+      // Use a single TextDecoder instance for proper multi-byte character handling
+      const decoder = new TextDecoder();
       let buffer = '';
+
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        buffer += new TextDecoder().decode(value);
+        buffer += decoder.decode(value, { stream: true });
         const lines = buffer.split('\n');
 
         for (let i = 0; i < lines.length - 1; i++) {
           const line = lines[i];
           if (line.startsWith('data: ')) {
+            const raw = line.slice(6).trim();
+            if (raw === '[DONE]') continue;
             try {
-              const data = JSON.parse(line.slice(6));
+              const data = JSON.parse(raw);
               const chunk = data.choices?.[0]?.delta?.content || '';
               if (chunk) {
-                setMessages((prev) => {
-                  const updated = [...prev];
-                  updated[updated.length - 1].content += chunk;
-                  return updated;
-                });
+                // IMMUTABLE update — create a new message object so React detects the change
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantId
+                      ? { ...msg, content: msg.content + chunk }
+                      : msg
+                  )
+                );
               }
             } catch {
-              // Ignore parse errors
+              // Ignore parse errors for incomplete JSON
             }
           }
         }
 
         buffer = lines[lines.length - 1];
       }
+
+      // Flush any remaining bytes from the decoder
+      decoder.decode(new Uint8Array(), { stream: false });
     } catch (error) {
       console.error('Chat error:', error);
       setMessages((prev) => [
@@ -109,14 +129,14 @@ export function ChatInterface() {
         {
           id: (Date.now() + 2).toString(),
           role: 'assistant',
-          content: 'ဆောင်ဆောင်ပါ။ အခုအချိန်မှာ ကျွန်ုပ်ကို ချိတ်ဆက်မရနိုင်ပါ။',
+          content: '\u1006\u1031\u102c\u1004\u103a\\u1006\u1031\u102c\u1004\u103a\u1015\u102b\u104b \u1021\u1001\u102f\u1021\u1001\u103b\u102d\u1014\u103a\u1019\u103e\u102c \u1000\u103b\u103d\u1014\u103a\u102f\u1015\u103a\u1000\u102d\u102f \u1001\u103b\u102d\u1010\u103a\u1006\u1000\u103a\u1019\u101b\u1014\u102d\u102f\u1004\u103a\u1015\u102b\u104b',
         },
       ]);
     } finally {
       setIsLoading(false);
       setIsStreaming(false);
     }
-  };
+  }, [input, isLoading]);
 
   const userBgClass = 'bg-primary text-primary-foreground rounded-3xl rounded-tr-sm';
   const assistantBgClass = 'bg-card text-card-foreground rounded-3xl rounded-tl-sm border border-border';
@@ -147,7 +167,7 @@ export function ChatInterface() {
                   message.role === 'user' ? userBgClass : assistantBgClass
                 }`}
               >
-                <p className="text-sm leading-relaxed">{message.content}</p>
+                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
               </Card>
             </div>
           ))
@@ -171,7 +191,7 @@ export function ChatInterface() {
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
+            onKeyDown={(e) => e.key === 'Enter' && !isLoading && handleSendMessage()}
             placeholder="သင်၏မေးခွန်းကိုရေးပါ..."
             disabled={isLoading}
             className="flex-1 rounded-full border-border focus:ring-primary"
