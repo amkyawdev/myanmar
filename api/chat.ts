@@ -7,6 +7,15 @@ export default async function handler(request: any, response: any) {
   const groqApiKey = process.env.GROQ_API_KEY;
   const defaultModel = 'llama-3.3-70b-versatile';
 
+  // Add system message for proper Burmese greeting handling
+  const systemMessage = {
+    role: 'system',
+    content: 'You are a helpful Myanmar AI Assistant. When user says "ဟိုင်း" (which is a Burmese greeting meaning "hi" or "hello"), respond with a friendly greeting like "ဟိုင်းပါ၊ နေကောင်းလား၊ ဘာများ ကူညီပေးရမလဲ။" or "ဟိုင်း! နေကောင်းလား။" Never confuse "ဟိုင်း" with Taiwan - it is a greeting in Burmese language.'
+  };
+
+  // Combine system message with user messages
+  const allMessages = [systemMessage, ...messages];
+
   if (!groqApiKey) {
     return response.status(500).json({ error: 'GROQ_API_KEY not configured' });
   }
@@ -20,7 +29,7 @@ export default async function handler(request: any, response: any) {
       },
       body: JSON.stringify({
         model: model || defaultModel,
-        messages: messages,
+        messages: allMessages,
         stream: true,
       }),
     });
