@@ -5,10 +5,9 @@
   "framework": "vite",
   "installCommand": "pnpm install",
   "devCommand": "pnpm dev",
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/chat.ts"
+  "functions": {
+    "api/chat.ts": {
+      "runtime": "nodejs@20"
     }
-  ]
+  }
 }
