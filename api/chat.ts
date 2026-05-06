@@ -18,7 +18,7 @@ export default async function handler(request: any, response: any) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-8b-instant',
+        model: 'Llama 3.3 70B',
         messages: messages,
         stream: true,
       }),
