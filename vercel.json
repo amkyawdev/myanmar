@@ -1,13 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "pnpm build",
-  "outputDirectory": "dist/public",
-  "framework": "vite",
+  "buildCommand": "echo Build not needed for SPA",
+  "outputDirectory": ".",
+  "framework": null,
   "installCommand": "pnpm install",
-  "devCommand": "pnpm dev",
-  "functions": {
-    "api/chat.ts": {
-      "runtime": "nodejs@20"
-    }
-  }
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/index.html" }
+  ]
 }
