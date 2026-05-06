@@ -4,5 +4,11 @@
   "outputDirectory": "dist/public",
   "framework": "vite",
   "installCommand": "pnpm install",
-  "devCommand": "pnpm dev"
+  "devCommand": "pnpm dev",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/chat.ts"
+    }
+  ]
 }
