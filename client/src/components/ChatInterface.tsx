@@ -52,6 +52,7 @@ export function ChatInterface() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
           messages: [...messages, userMessage].map((m) => ({
             role: m.role,
             content: m.content,

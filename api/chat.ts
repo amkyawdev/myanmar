@@ -3,8 +3,9 @@ export default async function handler(request: any, response: any) {
     return response.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages } = request.body;
+  const { messages, model } = request.body;
   const groqApiKey = process.env.GROQ_API_KEY;
+  const defaultModel = 'llama-3.3-70b-versatile';
 
   if (!groqApiKey) {
     return response.status(500).json({ error: 'GROQ_API_KEY not configured' });
@@ -18,7 +19,7 @@ export default async function handler(request: any, response: any) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'Llama 3.3 70B',
+        model: model || defaultModel,
         messages: messages,
         stream: true,
       }),
