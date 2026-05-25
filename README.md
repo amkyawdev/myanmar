@@ -12,7 +12,7 @@ A modern AI-powered Myanmar language assistant built with TypeScript, React, and
 
 [![Myanmar AI Assistant](https://raw.githubusercontent.com/amkyawdev/myanmar/0c3f491c8fe416635e5ee07133ade77117896c4a/screenshot.png)](https://myanmar-rho.vercel.app)
 
-**Try it live:** 👉 [https://myanmar-rho.vercel.app](https://myanmar-rho.vercel.app)
+**Try it live:** 👉 [DEMO](https://myanmar-rho.vercel.app)
 
 ---
 
